@@ -18,10 +18,17 @@ data/raw/
 !data/processed/*.model
 !data/processed/*.vocab
 
+# Raw subtitle files (large source media)
+*.srt
+
 # Root-level temp/exploration scripts
 0*.py
-clean_*.py
 merge_*.py
 convert_txt.py
 explore*.py
 download_data.py
+
+# Keep rush hour scripts and clean output
+!clean_rushhour.py
+!extract_rushhour_pairs.py
+!rush_hour_clean.csv

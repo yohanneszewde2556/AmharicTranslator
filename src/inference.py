@@ -287,13 +287,16 @@ def translate_batch(texts: list,
 
             next_tokens = logits.argmax(dim=-1, keepdim=True)      # (B, 1)
 
-            # For finished sentences, keep padding with PAD_IDX
+            # Detect which sentences just hit EOS BEFORE overwriting
+            just_finished = (next_tokens.squeeze(1) == EOS_IDX)
+
+            # For already-finished sentences, append PAD instead
             next_tokens[finished] = PAD_IDX
 
             ys = torch.cat([ys, next_tokens], dim=1)               # (B, tgt_len+1)
 
-            # Mark newly finished sentences
-            finished |= (next_tokens.squeeze(1) == EOS_IDX)
+            # Update finished mask
+            finished |= just_finished
 
             if finished.all():
                 break

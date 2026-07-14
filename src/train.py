@@ -11,7 +11,6 @@ Full training loop with:
 """
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler, autocast
 import math
 import time
 import os
@@ -78,7 +77,7 @@ def train_epoch(model, dataloader, optimizer, criterion, scaler, scheduler, devi
         optimizer.zero_grad()
 
         # FP16 AMP forward pass — doubles throughput on RTX 4000 Ada
-        with autocast():
+        with torch.amp.autocast('cuda'):
             logits = model(
                 src, tgt_input,
                 src_mask, tgt_mask,
@@ -144,7 +143,7 @@ def evaluate_epoch(model, dataloader, criterion, device):
                 src, tgt_input, PAD_IDX
             )
 
-            with autocast():
+            with torch.amp.autocast('cuda'):
                 logits = model(
                     src, tgt_input,
                     src_mask, tgt_mask,
@@ -207,22 +206,27 @@ def train():
     # label_smoothing=0.1 prevents overconfidence and improves generalisation
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, label_smoothing=0.1)
 
-    optimizer = torch.optim.AdamW(
+    # lr=1.0 because the Noam schedule lambda already computes the full LR
+    # Setting base lr to anything other than 1.0 would double-scale it
+    optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=LEARNING_RATE,
-        weight_decay=WEIGHT_DECAY,
+        lr=1.0,
         betas=(0.9, 0.98),
-        eps=1e-9
+        eps=1e-9,
+        weight_decay=WEIGHT_DECAY
     )
 
-    # LambdaLR applies our custom warmup+decay schedule per batch step
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer,
-        lr_lambda=get_lr
-    )
+    # Noam schedule: lrate = d_model^-0.5 * min(step^-0.5, step * warmup^-1.5)
+    # This is the exact schedule from "Attention Is All You Need"
+    # Peak LR ≈ 0.002 at step 4000 with d_model=512
+    def noam_lambda(step):
+        step = max(step, 1)
+        return (D_MODEL ** -0.5) * min(step ** -0.5, step * (WARMUP_STEPS ** -1.5))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=noam_lambda)
 
     # GradScaler manages loss scaling for FP16 AMP
-    scaler = GradScaler()
+    scaler = torch.amp.GradScaler('cuda')
 
     # ── Training loop ─────────────────────────────────────────────────────────
     best_val_loss    = float("inf")

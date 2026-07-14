@@ -19,8 +19,8 @@ DROPOUT = 0.1
 
 # Training Constants
 BATCH_SIZE = 64
-LEARNING_RATE = 3e-4
+LEARNING_RATE = 1.0       # Used as base for Noam scheduler — do not change
 WEIGHT_DECAY = 0.01
 WARMUP_STEPS = 4000
-NUM_EPOCHS = 20
+NUM_EPOCHS = 30           # More epochs since model needs more time
 MAX_LENGTH = 128

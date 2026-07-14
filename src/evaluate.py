@@ -18,7 +18,7 @@ import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import MAX_LENGTH
-from src.inference import load_model, translate
+from src.inference import load_model, translate, translate_batch
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -79,37 +79,35 @@ def evaluate(
     df["english"] = df["english"].astype(str).str.strip()
     df = df[(df["amharic"] != "") & (df["english"] != "")].reset_index(drop=True)
 
+    # Batch size for evaluation — larger = faster, uses more VRAM
+    EVAL_BATCH_SIZE = 64
+
     print(f"Test pairs     : {len(df):,}")
-    print(f"Beam width     : {beam_width}")
+    print(f"Eval batch size: {EVAL_BATCH_SIZE} (batched greedy for speed)")
+    print(f"Beam width     : {beam_width} (used for sample translations only)")
     print()
-    print("Translating test set (this may take several minutes)...")
+    print("Translating test set with batched greedy decoding...")
     print("-" * 60)
 
-    # ── Run inference on entire test set ──────────────────────────────────────
-    hypotheses = []   # model's translations
-    references  = []  # ground truth English sentences
+    # ── Run batched greedy inference on entire test set ───────────────────────
+    hypotheses = []
+    references = df["english"].tolist()
+    amharic_sentences = df["amharic"].tolist()
 
     start_time = time.time()
+    total = len(amharic_sentences)
 
-    for idx, row in df.iterrows():
-        hypothesis = translate(
-            row["amharic"],
-            model,
-            sp,
-            device,
-            method="beam",
-            beam_width=beam_width,
-            max_len=max_len
-        )
-        hypotheses.append(hypothesis)
-        references.append(row["english"])
+    for i in range(0, total, EVAL_BATCH_SIZE):
+        batch_texts = amharic_sentences[i: i + EVAL_BATCH_SIZE]
+        batch_hyps  = translate_batch(batch_texts, model, sp, device, max_len)
+        hypotheses.extend(batch_hyps)
 
-        # Progress print every 500 sentences
-        if (idx + 1) % 500 == 0:
-            elapsed = time.time() - start_time
-            rate    = (idx + 1) / elapsed
-            remaining = (len(df) - idx - 1) / rate
-            print(f"  [{idx+1:>5}/{len(df)}]  "
+        if (i + EVAL_BATCH_SIZE) % 500 < EVAL_BATCH_SIZE:
+            elapsed   = time.time() - start_time
+            done      = min(i + EVAL_BATCH_SIZE, total)
+            rate      = done / elapsed
+            remaining = (total - done) / rate if rate > 0 else 0
+            print(f"  [{done:>5}/{total}]  "
                   f"Elapsed: {elapsed/60:.1f}m  "
                   f"ETA: {remaining/60:.1f}m")
 
@@ -162,16 +160,20 @@ def evaluate(
     print("  Note: Use chrF as the primary metric for Amharic — character-level")
     print("  scoring is more reliable than word-level BLEU for Ge'ez script.")
 
-    # ── Sample translations ───────────────────────────────────────────────────
+    # ── Sample translations — use beam search for quality ────────────────────
     print()
     print("=" * 60)
-    print(f"SAMPLE TRANSLATIONS (first {sample_count})")
+    print(f"SAMPLE TRANSLATIONS (first {sample_count}) — Beam Search")
     print("=" * 60)
     for i in range(min(sample_count, len(df))):
+        beam_translation = translate(
+            df.iloc[i]["amharic"], model, sp, device,
+            method="beam", beam_width=beam_width, max_len=max_len
+        )
         print(f"\n[{i+1}]")
         print(f"  Source (AM) : {df.iloc[i]['amharic']}")
         print(f"  Reference   : {references[i]}")
-        print(f"  Hypothesis  : {hypotheses[i]}")
+        print(f"  Hypothesis  : {beam_translation}")
 
     # ── Save results to file ──────────────────────────────────────────────────
     results_path = os.path.join(BASE_DIR, "evaluation_results.txt")

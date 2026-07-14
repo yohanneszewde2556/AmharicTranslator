@@ -209,9 +209,9 @@ def translate(text: str,
     """
     model.eval()
     with torch.no_grad():
-        # Tokenize: add BOS and EOS
+        # Tokenize: add BOS and EOS, move directly to device
         src_ids = [BOS_IDX] + sp.encode(text, out_type=int) + [EOS_IDX]
-        src     = torch.tensor([src_ids], dtype=torch.long)  # (1, src_len)
+        src     = torch.tensor([src_ids], dtype=torch.long).to(device)  # (1, src_len)
 
         if method == "beam":
             out_ids = beam_search_decode(model, src, max_len, device, beam_width)
@@ -222,6 +222,94 @@ def translate(text: str,
         translation = sp.decode(out_ids.tolist())
 
     return translation
+
+
+# ── Batched greedy decode for fast evaluation ─────────────────────────────────
+def translate_batch(texts: list,
+                    model: Seq2SeqTransformer,
+                    sp: spm.SentencePieceProcessor,
+                    device: torch.device,
+                    max_len: int = MAX_LENGTH) -> list:
+    """
+    Translates a list of Amharic sentences using batched greedy decoding.
+    Much faster than one-by-one beam search for bulk evaluation.
+
+    Args:
+        texts   : list of Amharic strings
+        model   : loaded Seq2SeqTransformer
+        sp      : loaded SentencePieceProcessor
+        device  : cuda or cpu
+        max_len : maximum output tokens
+
+    Returns:
+        List of translated English strings
+    """
+    from torch.nn.utils.rnn import pad_sequence
+
+    model.eval()
+    with torch.no_grad():
+        # Tokenize all sentences
+        encoded = [
+            torch.tensor([BOS_IDX] + sp.encode(t, out_type=int) + [EOS_IDX],
+                         dtype=torch.long)
+            for t in texts
+        ]
+
+        # Dynamic pad to longest in this batch
+        src = pad_sequence(encoded, batch_first=True,
+                           padding_value=PAD_IDX).to(device)  # (B, src_len)
+
+        batch_size = src.shape[0]
+
+        # Build source padding mask
+        src_key_padding_mask = (src == PAD_IDX)                    # (B, src_len)
+        src_mask = torch.zeros(
+            (src.shape[1], src.shape[1]), device=device
+        ).bool()
+
+        # Encode entire batch at once
+        memory = model.encode(src, src_mask)                       # (B, src_len, d_model)
+
+        # Decoder starts with BOS for every sentence in batch
+        ys = torch.full((batch_size, 1), BOS_IDX,
+                        dtype=torch.long, device=device)           # (B, 1)
+
+        # Track which sentences have hit EOS
+        finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
+
+        for _ in range(max_len):
+            tgt_mask = generate_square_subsequent_mask(
+                ys.shape[1]
+            ).to(device)
+
+            out    = model.decode(ys, memory, tgt_mask)            # (B, tgt_len, d_model)
+            logits = model.generator(out[:, -1, :])                # (B, vocab_size)
+
+            next_tokens = logits.argmax(dim=-1, keepdim=True)      # (B, 1)
+
+            # For finished sentences, keep padding with PAD_IDX
+            next_tokens[finished] = PAD_IDX
+
+            ys = torch.cat([ys, next_tokens], dim=1)               # (B, tgt_len+1)
+
+            # Mark newly finished sentences
+            finished |= (next_tokens.squeeze(1) == EOS_IDX)
+
+            if finished.all():
+                break
+
+        # Decode each row back to string
+        results = []
+        for i in range(batch_size):
+            token_ids = ys[i, 1:].tolist()   # skip BOS
+            # Cut at EOS if present
+            if EOS_IDX in token_ids:
+                token_ids = token_ids[:token_ids.index(EOS_IDX)]
+            # Remove PAD tokens
+            token_ids = [t for t in token_ids if t != PAD_IDX]
+            results.append(sp.decode(token_ids))
+
+        return results
 
 
 # ── Standalone test ───────────────────────────────────────────────────────────

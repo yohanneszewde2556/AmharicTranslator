@@ -208,7 +208,7 @@ def train():
 
     # lr=1.0 because the Noam schedule lambda already computes the full LR
     # Setting base lr to anything other than 1.0 would double-scale it
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=1.0,
         betas=(0.9, 0.98),
@@ -231,7 +231,7 @@ def train():
     # ── Training loop ─────────────────────────────────────────────────────────
     best_val_loss    = float("inf")
     epochs_no_improve = 0
-    early_stop_patience = 5
+    early_stop_patience = 8
 
     print("Starting training...")
     print("-" * 60)

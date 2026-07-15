@@ -99,12 +99,13 @@ class Seq2SeqTransformer(nn.Module):
             src_mask
         )
 
-    def decode(self, tgt, memory, tgt_mask):
+    def decode(self, tgt, memory, tgt_mask, memory_key_padding_mask=None):
          # Used independently during Inference (Beam Search)
         return self.transformer.decoder(
             self.positional_encoding(self.tgt_tok_emb(tgt)), 
             memory, 
-            tgt_mask
+            tgt_mask,
+            memory_key_padding_mask=memory_key_padding_mask
         )
 
 def generate_square_subsequent_mask(sz):

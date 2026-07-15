@@ -290,7 +290,8 @@ def translate_batch(texts: list,
                 ys.shape[1]
             ).to(device)
 
-            out    = model.decode(ys, memory, tgt_mask)            # (B, tgt_len, d_model)
+            # Pass the src_key_padding_mask so decoder cross-attention ignores source padding
+            out    = model.decode(ys, memory, tgt_mask, memory_key_padding_mask=src_key_padding_mask)
             logits = model.generator(out[:, -1, :])                # (B, vocab_size)
 
             next_tokens = logits.argmax(dim=-1, keepdim=True)      # (B, 1)

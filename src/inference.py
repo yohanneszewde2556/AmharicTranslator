@@ -158,9 +158,10 @@ def beam_search_decode(model: Seq2SeqTransformer,
                 new_finished = (tok_id == EOS_IDX)
 
                 if new_finished:
-                    # Length normalisation: divide by sequence length to avoid
-                    # penalising longer translations
-                    normalised_score = new_score / len(new_tokens)
+                    # Length normalisation: divide by sequence length applying penalty.
+                    # alpha=0.65 penalizes runaway hallucinated sequences in beam search!
+                    alpha = 0.65
+                    normalised_score = new_score / (len(new_tokens) ** alpha)
                     completed.append((normalised_score, new_tokens))
                 else:
                     all_candidates.append((new_score, new_tokens, False))
@@ -172,7 +173,8 @@ def beam_search_decode(model: Seq2SeqTransformer,
     # If nothing completed (hit max_len), force-complete the best active beam
     if not completed and beams:
         score, tokens, _ = beams[0]
-        normalised_score = score / max(len(tokens), 1)
+        alpha = 0.65
+        normalised_score = score / (max(len(tokens), 1) ** alpha)
         completed.append((normalised_score, tokens))
 
     # Pick the completed sequence with the highest normalised score
@@ -277,6 +279,12 @@ def translate_batch(texts: list,
         # Track which sentences have hit EOS
         finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
 
+        # Identify common punctuation tokens to force-stop hallucinations
+        punct_tokens = set()
+        for p in [".", "?", "!", "።"]:
+            enc = sp.encode(p, out_type=int)
+            if enc: punct_tokens.add(enc[-1]) # use last token if it encodes to multiple
+
         for _ in range(max_len):
             tgt_mask = generate_square_subsequent_mask(
                 ys.shape[1]
@@ -288,7 +296,16 @@ def translate_batch(texts: list,
             next_tokens = logits.argmax(dim=-1, keepdim=True)      # (B, 1)
 
             # Detect which sentences just hit EOS BEFORE overwriting
-            just_finished = (next_tokens.squeeze(1) == EOS_IDX)
+            next_t = next_tokens.squeeze(1)
+            
+            # Force-stop hack to prevent runaway hallucinations after a period
+            if ys.shape[1] > 5:
+                for b_idx in range(batch_size):
+                    if not finished[b_idx] and next_t[b_idx].item() in punct_tokens:
+                        next_t[b_idx] = EOS_IDX
+                        next_tokens[b_idx, 0] = EOS_IDX
+
+            just_finished = (next_t == EOS_IDX)
 
             # For already-finished sentences, append PAD instead
             next_tokens[finished] = PAD_IDX

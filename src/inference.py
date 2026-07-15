@@ -349,25 +349,42 @@ if __name__ == "__main__":
     sp    = spm.SentencePieceProcessor()
     sp.load(SPM_MODEL)
 
-    # Test sentences
-    test_sentences = [
-        "ውሻው ሰውን ነከሰ።",
-        "እናቴ ቡና ትጠጣለች።",
-        "አዲስ አበባ የኢትዮጵያ ዋና ከተማ ናት።",
-    ]
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--interactive", action="store_true", help="Run in interactive terminal mode")
+    args, _ = parser.parse_known_args()
 
-    print("\n" + "=" * 55)
-    print("Inference Test — Beam Search (width=5)")
-    print("=" * 55)
-    for sent in test_sentences:
-        translation = translate(sent, model, sp, device, method="beam")
-        print(f"\n  AM : {sent}")
-        print(f"  EN : {translation}")
+    if args.interactive:
+        print("\n" + "=" * 55)
+        print("Interactive Translation Mode (Beam Search)")
+        print("Type 'exit' or 'quit' to stop.")
+        print("=" * 55)
+        while True:
+            try:
+                user_input = input("\nEnter Amharic: ")
+                if user_input.strip().lower() in ['exit', 'quit']:
+                    break
+                if not user_input.strip():
+                    continue
+                
+                translation = translate(user_input, model, sp, device, method="beam")
+                print(f"English    : {translation}")
+            except KeyboardInterrupt:
+                break
+    else:
+        # Test sentences
+        test_sentences = [
+            "ውሻው ሰውን ነከሰ።",
+            "እናቴ ቡና ትጠጣለች።",
+            "አዲስ አበባ የኢትዮጵያ ዋና ከተማ ናት።",
+        ]
 
-    print("\n" + "=" * 55)
-    print("Inference Test — Greedy")
-    print("=" * 55)
-    for sent in test_sentences:
-        translation = translate(sent, model, sp, device, method="greedy")
-        print(f"\n  AM : {sent}")
-        print(f"  EN : {translation}")
+        print("\n" + "=" * 55)
+        print("Inference Test — Beam Search (width=5)")
+        print("=" * 55)
+        for sent in test_sentences:
+            translation = translate(sent, model, sp, device, method="beam")
+            print(f"\n  AM : {sent}")
+            print(f"  EN : {translation}")
+
+        print("\nRun with --interactive to type your own sentences!")

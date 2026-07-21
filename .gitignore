@@ -22,7 +22,7 @@ ted/
 
 # Exploration scripts
 0*.py
-merge_*.py
+merge_datasets.py
 convert_txt.py
 explore*.py
 download_data.py

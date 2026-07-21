@@ -2,6 +2,11 @@ import torch
 
 # Configuration hyperparameters for the NMT model
 
+# ── Data version ──────────────────────────────────────────────────────────────
+# Set to "v2" to use the expanded corpus (232,914 pairs, data/processed/v2/).
+# Set to ""   to use the original corpus  (229,472 pairs, data/processed/).
+DATA_VERSION = "v2"
+
 # Tokenization
 VOCAB_SIZE = 32000
 PAD_IDX = 0

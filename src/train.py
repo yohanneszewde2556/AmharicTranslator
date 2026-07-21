@@ -23,7 +23,8 @@ from src.config import (
     D_MODEL, N_HEADS, NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS,
     DIM_FEEDFORWARD, DROPOUT,
     BATCH_SIZE, LEARNING_RATE, WEIGHT_DECAY,
-    WARMUP_STEPS, NUM_EPOCHS, MAX_LENGTH
+    WARMUP_STEPS, NUM_EPOCHS, MAX_LENGTH,
+    DATA_VERSION
 )
 from src.model import Seq2SeqTransformer, create_mask
 from src.dataset import get_dataloader
@@ -31,9 +32,14 @@ from src.dataset import get_dataloader
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TRAIN_CSV      = os.path.join(BASE_DIR, "data", "processed", "train.csv")
-VAL_CSV        = os.path.join(BASE_DIR, "data", "processed", "val.csv")
-SPM_MODEL      = os.path.join(BASE_DIR, "data", "processed", "am_en_bpe.model")
+# DATA_VERSION controls which processed split to use:
+#   "v2" → data/processed/v2/  (expanded corpus, 232,914 pairs)
+#   ""   → data/processed/     (original corpus,  229,472 pairs)
+_PROC_DIR      = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
+                 if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
+TRAIN_CSV      = os.path.join(_PROC_DIR, "train.csv")
+VAL_CSV        = os.path.join(_PROC_DIR, "val.csv")
+SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 

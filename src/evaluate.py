@@ -23,8 +23,12 @@ from src.inference import load_model, translate, translate_batch
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TEST_CSV       = os.path.join(BASE_DIR, "data", "processed", "test.csv")
-SPM_MODEL      = os.path.join(BASE_DIR, "data", "processed", "am_en_bpe.model")
+# Import DATA_VERSION to mirror whichever corpus train.py is using
+from src.config import DATA_VERSION
+_PROC_DIR      = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
+                 if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
+TEST_CSV       = os.path.join(_PROC_DIR, "test.csv")
+SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 

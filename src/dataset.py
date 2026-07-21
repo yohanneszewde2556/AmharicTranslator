@@ -129,8 +129,11 @@ if __name__ == "__main__":
     import sys
 
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    TRAIN_CSV = os.path.join(BASE_DIR, "data", "processed", "train.csv")
-    SPM_MODEL = os.path.join(BASE_DIR, "data", "processed", "am_en_bpe.model")
+    from src.config import DATA_VERSION
+    _PROC_DIR = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
+                if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
+    TRAIN_CSV = os.path.join(_PROC_DIR, "train.csv")
+    SPM_MODEL = os.path.join(_PROC_DIR, "am_en_bpe.model")
 
     if not os.path.exists(TRAIN_CSV):
         print(f"ERROR: {TRAIN_CSV} not found.")

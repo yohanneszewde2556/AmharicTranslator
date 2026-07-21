@@ -6,6 +6,7 @@ __pycache__/
 *.csv
 *.whl
 *.srt
+*.png
 new_source.en
 new_source.am
 ~$*

@@ -2,41 +2,26 @@ venv/
 __pycache__/
 *.pyc
 .env
-
-# Root-level raw/intermediate data (large, generated, or machine-specific)
 *.xlsx
 *.csv
+*.whl
+*.srt
 new_source.en
 new_source.am
 ~$*
 
-# Raw data (large CSVs, downloaded datasets)
-data/raw/
+# Data folders
+data/
+artifacts/
+checkpoints/
+globalvoices/
+gnome/
+opensubtitles/
+ted/
 
-# Keep processed data (train/val/test CSVs and BPE model)
-!data/processed/*.csv
-!data/processed/*.model
-!data/processed/*.vocab
-
-# Raw subtitle files (large source media)
-*.srt
-
-# Root-level temp/exploration scripts
+# Exploration scripts
 0*.py
 merge_*.py
 convert_txt.py
 explore*.py
 download_data.py
-
-# Keep rush hour scripts and clean output
-!clean_rushhour.py
-!extract_rushhour_pairs.py
-!rush_hour_clean.csv
-Add-Content .gitignore "`nartifacts/"
-Add-Content .gitignore "checkpoints/"
-Add-Content .gitignore "data/v2/"
-Add-Content .gitignore "globalvoices/"
-Add-Content .gitignore "gnome/"
-Add-Content .gitignore "opensubtitles/"
-Add-Content .gitignore "ted/"
-Add-Content .gitignore "*.whl"

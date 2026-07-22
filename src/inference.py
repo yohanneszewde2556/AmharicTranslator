@@ -14,14 +14,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import (
     VOCAB_SIZE, PAD_IDX, BOS_IDX, EOS_IDX,
     D_MODEL, N_HEADS, NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS,
-    DIM_FEEDFORWARD, DROPOUT, MAX_LENGTH
+    DIM_FEEDFORWARD, DROPOUT, MAX_LENGTH, DATA_VERSION
 )
 from src.model import Seq2SeqTransformer, generate_square_subsequent_mask
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPM_MODEL      = os.path.join(BASE_DIR, "data", "processed", "am_en_bpe.model")
+_PROC_DIR      = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
+                 if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
+SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 

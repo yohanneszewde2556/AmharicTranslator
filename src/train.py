@@ -15,6 +15,7 @@ import math
 import time
 import os
 import sys
+import argparse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -41,7 +42,24 @@ TRAIN_CSV      = os.path.join(_PROC_DIR, "train.csv")
 VAL_CSV        = os.path.join(_PROC_DIR, "val.csv")
 SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
+LOG_FILE       = os.path.join(BASE_DIR, "training_log.txt")
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+
+# ── Logger — writes to stdout AND training_log.txt simultaneously ─────────────
+class Logger:
+    def __init__(self, filepath):
+        self.terminal = sys.stdout
+        self.log      = open(filepath, "a", encoding="utf-8")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
 
 
 # ── LR Scheduler ──────────────────────────────────────────────────────────────
@@ -170,6 +188,21 @@ def evaluate_epoch(model, dataloader, criterion, device):
 
 # ── Main training entry point ─────────────────────────────────────────────────
 def train():
+    # ── Argument parsing ──────────────────────────────────────────────────────
+    parser = argparse.ArgumentParser(description="Amharic-English NMT Training")
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume training from checkpoints/best_model.pt"
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=NUM_EPOCHS,
+        help=f"Total epochs to train (default: {NUM_EPOCHS})"
+    )
+    args = parser.parse_args()
+
+    # ── Tee stdout → training_log.txt ─────────────────────────────────────────
+    sys.stdout = Logger(LOG_FILE)
+
     # ── Device setup ──────────────────────────────────────────────────────────
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("=" * 60)
@@ -234,18 +267,39 @@ def train():
     # GradScaler manages loss scaling for FP16 AMP
     scaler = torch.amp.GradScaler('cuda')
 
-    # ── Training loop ─────────────────────────────────────────────────────────
-    best_val_loss    = float("inf")
+    # ── Resume from checkpoint ────────────────────────────────────────────────
+    start_epoch       = 1
+    best_val_loss     = float("inf")
     epochs_no_improve = 0
     early_stop_patience = 8
 
-    print("Starting training...")
+    checkpoint_path = os.path.join(CHECKPOINT_DIR, "best_model.pt")
+
+    if args.resume and os.path.exists(checkpoint_path):
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        ck = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        model.load_state_dict(ck["model_state_dict"])
+        optimizer.load_state_dict(ck["optimizer_state_dict"])
+        scheduler.load_state_dict(ck["scheduler_state_dict"])
+        best_val_loss = ck["val_loss"]
+        start_epoch   = ck["epoch"] + 1
+        print(f"  Resumed at epoch {ck['epoch']}  |  best val loss so far: {best_val_loss:.4f}")
+        print(f"  Continuing from epoch {start_epoch} → {args.epochs}")
+        print()
+    elif args.resume:
+        print(f"WARNING: --resume passed but no checkpoint found at {checkpoint_path}")
+        print("Starting from scratch instead.")
+        print()
+
+    # ── Training loop ─────────────────────────────────────────────────────────
+    total_epochs = args.epochs
+    print(f"Starting training  (epochs {start_epoch} → {total_epochs})")
     print("-" * 60)
 
-    for epoch in range(1, NUM_EPOCHS + 1):
+    for epoch in range(start_epoch, total_epochs + 1):
         epoch_start = time.time()
 
-        print(f"\nEpoch {epoch}/{NUM_EPOCHS}")
+        print(f"\nEpoch {epoch}/{total_epochs}")
 
         # Train
         train_loss = train_epoch(

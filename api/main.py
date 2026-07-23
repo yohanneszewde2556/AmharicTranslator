@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Allow imports from project root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.config import MAX_LENGTH
+from src.config import MAX_LENGTH, DATA_VERSION
 from src.inference import load_model, translate
 from api.models import (
     TranslationRequest,
@@ -33,7 +33,9 @@ from api.models import (
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPM_MODEL      = os.path.join(BASE_DIR, "data", "processed", "am_en_bpe.model")
+_PROC_DIR      = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
+                 if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
+SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
 CHECKPOINT     = os.path.join(BASE_DIR, "checkpoints", "best_model.pt")
 
 # ── Global app state ──────────────────────────────────────────────────────────
@@ -102,6 +104,9 @@ async def lifespan(app: FastAPI):
     print("Shutdown complete.")
 
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # ── FastAPI app instance ───────────────────────────────────────────────────────
 app = FastAPI(
     title="Amharic-English NMT API",
@@ -110,7 +115,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Allow cross-origin requests (needed if a frontend on a different port calls this)
+# Allow cross-origin requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -118,8 +123,21 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+WEB_DIR = os.path.join(BASE_DIR, "web")
+if os.path.exists(WEB_DIR):
+    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@app.get("/", include_in_schema=False)
+def index():
+    """Serves the interactive web translator frontend."""
+    index_path = os.path.join(WEB_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Amharic-English NMT API is running. Go to /docs for Swagger UI."}
+
 
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 def health():

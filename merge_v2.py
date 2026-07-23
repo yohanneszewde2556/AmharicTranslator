@@ -21,6 +21,7 @@ SOURCES = {
     "globalvoices"  : f"{FILTERED_DIR}/globalvoices.csv",
     "gnome"         : f"{FILTERED_DIR}/gnome.csv",
     "rush_hour"     : f"{FILTERED_DIR}/rush_hour.csv",
+    "crispr_global" : f"{FILTERED_DIR}/crispr_global_clean.csv",
 }
 
 # ── load legacy corpus ────────────────────────────────────────────────────────

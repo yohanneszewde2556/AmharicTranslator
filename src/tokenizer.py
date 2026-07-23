@@ -67,11 +67,16 @@ def train_tokenizer(train_csv_path, output_dir, vocab_size=32000):
 
 if __name__ == "__main__":
     import sys
-    train_csv = "data/processed/train.csv"
-    output_dir = "data/processed"
-    
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from src.config import VOCAB_SIZE, DATA_VERSION
+
+    _PROC_DIR = os.path.join("data", "processed", DATA_VERSION) if DATA_VERSION else os.path.join("data", "processed")
+    train_csv = os.path.join(_PROC_DIR, "train.csv")
+    output_dir = _PROC_DIR
+
     if not os.path.exists(train_csv):
         print(f"Error: {train_csv} not found.")
         sys.exit(1)
-        
-    train_tokenizer(train_csv, output_dir)
+
+    print(f"Training tokenizer with VOCAB_SIZE={VOCAB_SIZE} on {train_csv}...")
+    train_tokenizer(train_csv, output_dir, vocab_size=VOCAB_SIZE)

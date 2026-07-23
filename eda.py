@@ -12,22 +12,32 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from src.config import DATA_VERSION
+except ImportError:
+    DATA_VERSION = "v2"
+
 # Set style for better-looking plots
 sns.set_style("whitegrid")
 plt.rcParams['figure.figsize'] = (12, 6)
 
 print("=" * 80)
-print("AMHARIC-ENGLISH NMT: COMPREHENSIVE EDA")
+print(f"AMHARIC-ENGLISH NMT: COMPREHENSIVE EDA (DATA_VERSION='{DATA_VERSION}')")
 print("=" * 80)
 
 # ============================================================================
 # 1. RAW CORPUS ANALYSIS
 # ============================================================================
-print("\n" + "=" * 80)
-print("1. RAW CORPUS ANALYSIS (data/raw/final_dataset.csv)")
-print("=" * 80)
+raw_filename = f"final_dataset_{DATA_VERSION}.csv" if DATA_VERSION else "final_dataset.csv"
+raw_path = os.path.join("data", "raw", raw_filename)
+if not os.path.exists(raw_path):
+    raw_path = "data/raw/final_dataset.csv"
 
-raw_path = "data/raw/final_dataset.csv"
+print("\n" + "=" * 80)
+print(f"1. RAW CORPUS ANALYSIS ({raw_path})")
+print("=" * 80)
 if os.path.exists(raw_path):
     df_raw = pd.read_csv(raw_path)
     
@@ -130,14 +140,15 @@ else:
 # ============================================================================
 # 2. PROCESSED SPLITS ANALYSIS
 # ============================================================================
+proc_dir = os.path.join("data", "processed", DATA_VERSION) if DATA_VERSION else os.path.join("data", "processed")
 print("\n\n" + "=" * 80)
-print("2. PROCESSED SPLITS ANALYSIS (data/processed/)")
+print(f"2. PROCESSED SPLITS ANALYSIS ({proc_dir})")
 print("=" * 80)
 
 splits = {
-    'train': 'data/processed/train.csv',
-    'val': 'data/processed/val.csv',
-    'test': 'data/processed/test.csv'
+    'train': os.path.join(proc_dir, "train.csv"),
+    'val': os.path.join(proc_dir, "val.csv"),
+    'test': os.path.join(proc_dir, "test.csv")
 }
 
 split_stats = {}
@@ -176,11 +187,11 @@ if split_stats:
 # 3. TOKENIZER ANALYSIS
 # ============================================================================
 print("\n\n" + "=" * 80)
-print("3. TOKENIZER ANALYSIS (SentencePiece BPE)")
+print(f"3. TOKENIZER ANALYSIS (SentencePiece BPE in {proc_dir})")
 print("=" * 80)
 
-tokenizer_model = "data/processed/am_en_bpe.model"
-tokenizer_vocab = "data/processed/am_en_bpe.vocab"
+tokenizer_model = os.path.join(proc_dir, "am_en_bpe.model")
+tokenizer_vocab = os.path.join(proc_dir, "am_en_bpe.vocab")
 
 if os.path.exists(tokenizer_model) and os.path.exists(tokenizer_vocab):
     try:
@@ -234,9 +245,9 @@ if os.path.exists(tokenizer_model) and os.path.exists(tokenizer_vocab):
             print(f"    IDs (first 10): {ids[:10]}")
         
         # Token length statistics on train split
-        if os.path.exists('data/processed/train.csv'):
-            print(f"\n📊 Token Length Statistics (Train Split):")
-            df_train = pd.read_csv('data/processed/train.csv')
+        if os.path.exists(splits['train']):
+            print(f"\n📊 Token Length Statistics (Train Split: {splits['train']}):")
+            df_train = pd.read_csv(splits['train'])
             
             # Sample for speed (analyze 10,000 random pairs)
             sample_size = min(10000, len(df_train))

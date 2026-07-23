@@ -2,6 +2,9 @@ import pandas as pd
 import re
 from sklearn.model_selection import train_test_split
 import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def normalize_amharic(text):
     if not isinstance(text, str):
@@ -86,8 +89,9 @@ def run_preprocessing(input_path, output_dir):
     print("Preprocessing Phase 1 completed successfully!")
 
 if __name__ == "__main__":
-    raw_csv = "data/raw/final_dataset.csv"
-    processed_dir = "data/processed"
+    from src.config import DATA_VERSION
+    raw_csv = f"data/raw/final_dataset_{DATA_VERSION}.csv" if DATA_VERSION else "data/raw/final_dataset.csv"
+    processed_dir = os.path.join("data", "processed", DATA_VERSION) if DATA_VERSION else os.path.join("data", "processed")
     if not os.path.exists(raw_csv):
         print(f"FATAL WARNING: {raw_csv} not found.")
         print("Please ensure the CSV file is located in the data/raw/ directory.")

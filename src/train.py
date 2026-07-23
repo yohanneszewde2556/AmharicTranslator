@@ -234,61 +234,97 @@ def train():
     # GradScaler manages loss scaling for FP16 AMP
     scaler = torch.amp.GradScaler('cuda')
 
-    # ── Training loop ─────────────────────────────────────────────────────────
-    best_val_loss    = float("inf")
+    # ── Resume from checkpoint if available ───────────────────────────────────
+    start_epoch = 1
+    best_val_loss = float("inf")
+    last_checkpoint_path = os.path.join(CHECKPOINT_DIR, "last_model.pt")
+    best_checkpoint_path = os.path.join(CHECKPOINT_DIR, "best_model.pt")
+
+    if os.path.exists(last_checkpoint_path):
+        print(f"Resuming training from checkpoint: {last_checkpoint_path}")
+        checkpoint = torch.load(last_checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        if "optimizer_state_dict" in checkpoint:
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        if "scheduler_state_dict" in checkpoint:
+            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        start_epoch = checkpoint.get("epoch", 0) + 1
+        best_val_loss = checkpoint.get("best_val_loss", checkpoint.get("val_loss", float("inf")))
+        print(f"Resuming from Epoch {start_epoch} (best val loss so far: {best_val_loss:.4f})")
+        print()
+
     epochs_no_improve = 0
     early_stop_patience = 8
 
-    print("Starting training...")
+    print("Starting training (Press Ctrl+C anytime to pause and save)...")
     print("-" * 60)
 
-    for epoch in range(1, NUM_EPOCHS + 1):
-        epoch_start = time.time()
+    try:
+        for epoch in range(start_epoch, NUM_EPOCHS + 1):
+            epoch_start = time.time()
 
-        print(f"\nEpoch {epoch}/{NUM_EPOCHS}")
+            print(f"\nEpoch {epoch}/{NUM_EPOCHS}")
 
-        # Train
-        train_loss = train_epoch(
-            model, train_loader, optimizer, criterion, scaler, scheduler, device
-        )
+            # Train
+            train_loss = train_epoch(
+                model, train_loader, optimizer, criterion, scaler, scheduler, device
+            )
 
-        # Validate
-        val_loss = evaluate_epoch(model, val_loader, criterion, device)
+            # Validate
+            val_loss = evaluate_epoch(model, val_loader, criterion, device)
 
-        epoch_time = time.time() - epoch_start
+            epoch_time = time.time() - epoch_start
 
-        # Perplexity = e^loss — a common readable metric for language models
-        train_ppl = math.exp(train_loss)
-        val_ppl   = math.exp(val_loss)
+            # Perplexity = e^loss
+            train_ppl = math.exp(train_loss)
+            val_ppl   = math.exp(val_loss)
 
-        print(f"\nEpoch {epoch} Summary:")
-        print(f"  Train Loss : {train_loss:.4f}  |  Train PPL : {train_ppl:.2f}")
-        print(f"  Val Loss   : {val_loss:.4f}  |  Val PPL   : {val_ppl:.2f}")
-        print(f"  Time       : {epoch_time/60:.1f} min")
+            print(f"\nEpoch {epoch} Summary:")
+            print(f"  Train Loss : {train_loss:.4f}  |  Train PPL : {train_ppl:.2f}")
+            print(f"  Val Loss   : {val_loss:.4f}  |  Val PPL   : {val_ppl:.2f}")
+            print(f"  Time       : {epoch_time/60:.1f} min")
 
-        # ── Checkpoint: save if validation loss improved ───────────────────
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            epochs_no_improve = 0
-            checkpoint_path = os.path.join(CHECKPOINT_DIR, "best_model.pt")
+            # Always save last checkpoint for safe pause & resume
             torch.save({
-                "epoch"           : epoch,
-                "model_state_dict": model.state_dict(),
+                "epoch"               : epoch,
+                "model_state_dict"    : model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "scheduler_state_dict": scheduler.state_dict(),
-                "val_loss"        : val_loss,
-                "train_loss"      : train_loss,
-            }, checkpoint_path)
-            print(f"  Checkpoint saved → {checkpoint_path}  (best val loss: {best_val_loss:.4f})")
-        else:
-            epochs_no_improve += 1
-            print(f"  No improvement. Patience: {epochs_no_improve}/{early_stop_patience}")
+                "val_loss"            : val_loss,
+                "train_loss"          : train_loss,
+                "best_val_loss"       : min(best_val_loss, val_loss),
+            }, last_checkpoint_path)
 
-        # ── Early stopping ────────────────────────────────────────────────
-        if epochs_no_improve >= early_stop_patience:
-            print(f"\nEarly stopping triggered after {epoch} epochs.")
-            print(f"Best validation loss: {best_val_loss:.4f}")
-            break
+            # Checkpoint best model if validation loss improved
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                epochs_no_improve = 0
+                torch.save({
+                    "epoch"               : epoch,
+                    "model_state_dict"    : model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict(),
+                    "val_loss"            : val_loss,
+                    "train_loss"          : train_loss,
+                }, best_checkpoint_path)
+                print(f"  Best checkpoint saved → {best_checkpoint_path}  (best val loss: {best_val_loss:.4f})")
+            else:
+                epochs_no_improve += 1
+                print(f"  No improvement. Patience: {epochs_no_improve}/{early_stop_patience}")
+
+            # Early stopping
+            if epochs_no_improve >= early_stop_patience:
+                print(f"\nEarly stopping triggered after {epoch} epochs.")
+                print(f"Best validation loss: {best_val_loss:.4f}")
+                break
+
+    except KeyboardInterrupt:
+        print("\n" + "=" * 60)
+        print("Training PAUSED by user (KeyboardInterrupt).")
+        print(f"Progress safely saved to: {last_checkpoint_path}")
+        print("Run 'python src/train.py' again anytime to resume seamlessly.")
+        print("=" * 60)
+        return
 
     print("\n" + "=" * 60)
     print("Training complete.")

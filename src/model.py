@@ -55,7 +55,8 @@ class Seq2SeqTransformer(nn.Module):
             num_decoder_layers=num_decoder_layers,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=True  # Ensure shapes are uniformly (batch, seq, feature)
+            batch_first=True,  # Ensure shapes are uniformly (batch, seq, feature)
+            norm_first=True    # Pre-LayerNorm architecture for training stability
         )
         
         self.src_tok_emb = TokenEmbedding(src_vocab_size, d_model)

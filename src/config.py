@@ -8,7 +8,7 @@ import torch
 DATA_VERSION = "v2"
 
 # Tokenization
-VOCAB_SIZE = 32000
+VOCAB_SIZE = 24000
 PAD_IDX = 0
 UNK_IDX = 1
 BOS_IDX = 2
@@ -26,6 +26,6 @@ DROPOUT = 0.1
 BATCH_SIZE = 64
 LEARNING_RATE = 1.0       # Used as base for Noam scheduler — do not change
 WEIGHT_DECAY = 0.001
-WARMUP_STEPS = 12000
+WARMUP_STEPS = 4000
 NUM_EPOCHS = 40
 MAX_LENGTH = 128

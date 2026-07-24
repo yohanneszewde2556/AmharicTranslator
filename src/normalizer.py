@@ -71,10 +71,14 @@ def normalize_amharic_text(text: str) -> str:
     text = re.sub(r'ሀለሁ$', 'ሃለሁ', text)
     text = re.sub(r'ሀለሁ\s', 'ሃለሁ ', text)
 
+    # 2. Greeting Clause Boundary Normalization
+    # If text starts with 'ሰላም' followed by a space (e.g. ሰላም እንዴት ነህ), add '!' boundary so it translates to "hello!" instead of "peace"
+    text = re.sub(r'^(ሰላም)\s+', r'\1! ', text)
+
     # Collapse multiple whitespaces
     text = re.sub(r'\s+', ' ', text).strip()
 
-    # 2. Interrogative Question Mark Attachment
+    # 3. Interrogative Question Mark Attachment
     # If text contains a question word or already ends with ?, attach ? directly without leading space
     has_question_word = any(qw in text for qw in QUESTION_WORDS)
     if (has_question_word or '?' in text):

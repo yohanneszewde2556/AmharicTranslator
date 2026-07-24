@@ -1,11 +1,10 @@
 """
-Amharic Text Normalization & Punctuation Isolation Engine.
+Amharic Text Normalization Engine.
 
 Normalizes:
 1. Amharic Homophones (ሀ/ሐ/ኀ, ሠ/ሰ, ዐ/አ, ፀ/ጸ)
 2. Common informal spelling/verb variations (e.g. ሀለው -> ሃለሁ)
-3. Punctuation isolation & spacing (e.g., ?, !, 。, ፡, ፡, .)
-4. Interrogative question mark auto-completion for question words (እንዴት, ማን, ምን, etc.)
+3. Sentence-ending question mark attachment for interrogative words (እንዴት, ማን, ምን, etc.)
 """
 
 import re
@@ -18,7 +17,7 @@ QUESTION_WORDS = [
 def normalize_amharic_text(text: str) -> str:
     """
     Standardizes Amharic homophones, normalizes informal verb endings,
-    isolates punctuation marks, and auto-completes interrogative context for question words.
+    and attaches sentence-ending question mark context for interrogative words.
 
     Args:
         text (str): Raw input Amharic text
@@ -72,14 +71,13 @@ def normalize_amharic_text(text: str) -> str:
     text = re.sub(r'ሀለሁ$', 'ሃለሁ', text)
     text = re.sub(r'ሀለሁ\s', 'ሃለሁ ', text)
 
-    # 2. Punctuation isolation & spacing
-    text = re.sub(r'([?!።፣;:.,])', r' \1 ', text)
+    # Collapse multiple whitespaces
     text = re.sub(r'\s+', ' ', text).strip()
 
-    # 3. Interrogative Question Mark Auto-Completion
-    # If the input contains a question word or already has '?', ensure it ends with isolated '?'
+    # 2. Interrogative Question Mark Attachment
+    # If text contains a question word or already ends with ?, attach ? directly without leading space
     has_question_word = any(qw in text for qw in QUESTION_WORDS)
-    if (has_question_word or '?' in text) and not text.endswith('?'):
-        text = text.rstrip('.!። ') + ' ?'
+    if (has_question_word or '?' in text):
+        text = text.rstrip('.!።? ') + '?'
 
-    return text.strip()
+    return text

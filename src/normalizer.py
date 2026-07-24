@@ -5,14 +5,20 @@ Normalizes:
 1. Amharic Homophones (ሀ/ሐ/ኀ, ሠ/ሰ, ዐ/አ, ፀ/ጸ)
 2. Common informal spelling/verb variations (e.g. ሀለው -> ሃለሁ)
 3. Punctuation isolation & spacing (e.g., ?, !, 。, ፡, ፡, .)
+4. Interrogative question mark auto-completion for question words (እንዴት, ማን, ምን, etc.)
 """
 
 import re
 
+# List of common Amharic interrogative question words
+QUESTION_WORDS = [
+    'እንዴት', 'ማን', 'ምን', 'ምንድን', 'ለምን', 'መቼ', 'የት', 'ስንት', 'እንደምን'
+]
+
 def normalize_amharic_text(text: str) -> str:
     """
     Standardizes Amharic homophones, normalizes informal verb endings,
-    and isolates punctuation marks to prevent subword tokenizer fragmentation.
+    isolates punctuation marks, and auto-completes interrogative context for question words.
 
     Args:
         text (str): Raw input Amharic text
@@ -26,17 +32,11 @@ def normalize_amharic_text(text: str) -> str:
     # 1. Homophone character standardization
     # ሐ, ኀ -> ሀ
     text = re.sub(r'[ሐኀ]', 'ሀ', text)
-    # ሑ, ኁ -> ሁ
     text = re.sub(r'[ሑኁ]', 'ሁ', text)
-    # ሒ, ኺ -> ሂ
     text = re.sub(r'[ሒኺ]', 'ሂ', text)
-    # ሓ, ኻ -> ሃ
     text = re.sub(r'[ሓኻ]', 'ሃ', text)
-    # ሔ, ኼ -> ሄ
     text = re.sub(r'[ሔኼ]', 'ሄ', text)
-    # ሕ, ኅ -> ህ
     text = re.sub(r'[ሕኅ]', 'ህ', text)
-    # ሖ, ኆ -> ሆ
     text = re.sub(r'[ሖኆ]', 'ሆ', text)
 
     # ሠ -> ሰ
@@ -73,20 +73,13 @@ def normalize_amharic_text(text: str) -> str:
     text = re.sub(r'ሀለሁ\s', 'ሃለሁ ', text)
 
     # 2. Punctuation isolation & spacing
-    # Insert space around question marks (?), exclamation marks (!), periods (.), commas (,), Ge'ez four-dots (።), colon (፡)
     text = re.sub(r'([?!።፣;:.,])', r' \1 ', text)
-
-    # Collapse multiple whitespaces
     text = re.sub(r'\s+', ' ', text).strip()
 
-    return text
+    # 3. Interrogative Question Mark Auto-Completion
+    # If the input contains a question word or already has '?', ensure it ends with isolated '?'
+    has_question_word = any(qw in text for qw in QUESTION_WORDS)
+    if (has_question_word or '?' in text) and not text.endswith('?'):
+        text = text.rstrip('.!። ') + ' ?'
 
-
-def strip_trailing_punctuation(text: str) -> str:
-    """
-    Strips trailing sentence boundary punctuation for invariant root encoding.
-    """
-    if not text:
-        return ""
-    return re.sub(r'[?!።፣;:.,\s]+$', '', text).strip()
-
+    return text.strip()

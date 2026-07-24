@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.config import DATA_VERSION
 from src.inference import load_model, translate
-from src.normalizer import normalize_amharic_text, strip_trailing_punctuation
+from src.normalizer import normalize_amharic_text
 
 # Paths
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
@@ -61,9 +61,8 @@ def run_tests():
         print(f"--- Test Group: {group['name']} ---")
         translations = []
         for text in group["inputs"]:
-            clean_input = strip_trailing_punctuation(text)
-            norm_text = normalize_amharic_text(clean_input)
-            trans = translate(clean_input, model, sp, device, method="beam", beam_width=5)
+            norm_text = normalize_amharic_text(text)
+            trans = translate(text, model, sp, device, method="beam", beam_width=5)
             translations.append(trans)
             print(f"  Input  : '{text}'  --> Normalized: '{norm_text}'")
             print(f"  Output : '{trans}'\n")

@@ -17,7 +17,7 @@ from src.config import (
     DIM_FEEDFORWARD, DROPOUT, MAX_LENGTH, DATA_VERSION
 )
 from src.model import Seq2SeqTransformer, generate_square_subsequent_mask
-from src.normalizer import normalize_amharic_text, strip_trailing_punctuation
+from src.normalizer import normalize_amharic_text
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -203,9 +203,8 @@ def translate(text: str,
     """
     model.eval()
     with torch.no_grad():
-        # Pre-process: strip trailing punctuation & normalize homophones
-        clean_text = strip_trailing_punctuation(text)
-        norm_text  = normalize_amharic_text(clean_text)
+        # Pre-process: normalize homophones, isolate punctuation & auto-complete interrogatives
+        norm_text = normalize_amharic_text(text)
         # Tokenize: add BOS and EOS, move directly to device
         src_ids = [BOS_IDX] + sp.encode(norm_text, out_type=int) + [EOS_IDX]
         src     = torch.tensor([src_ids], dtype=torch.long).to(device)  # (1, src_len)

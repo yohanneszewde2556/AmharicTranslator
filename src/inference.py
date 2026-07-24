@@ -17,6 +17,7 @@ from src.config import (
     DIM_FEEDFORWARD, DROPOUT, MAX_LENGTH, DATA_VERSION
 )
 from src.model import Seq2SeqTransformer, generate_square_subsequent_mask
+from src.normalizer import normalize_amharic_text, strip_trailing_punctuation
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -198,23 +199,15 @@ def translate(text: str,
               max_len: int = MAX_LENGTH) -> str:
     """
     End-to-end translation: Amharic string → English string.
-
-    Args:
-        text       : Amharic input sentence
-        model      : loaded Seq2SeqTransformer
-        sp         : loaded SentencePieceProcessor
-        device     : cpu or cuda
-        method     : "beam" (default) or "greedy"
-        beam_width : beam width when method="beam"
-        max_len    : maximum output tokens
-
-    Returns:
-        Translated English string
+    Normalizes homophones, isolates punctuation, and handles trailing punctuation invariance.
     """
     model.eval()
     with torch.no_grad():
+        # Pre-process: strip trailing punctuation & normalize homophones
+        clean_text = strip_trailing_punctuation(text)
+        norm_text  = normalize_amharic_text(clean_text)
         # Tokenize: add BOS and EOS, move directly to device
-        src_ids = [BOS_IDX] + sp.encode(text, out_type=int) + [EOS_IDX]
+        src_ids = [BOS_IDX] + sp.encode(norm_text, out_type=int) + [EOS_IDX]
         src     = torch.tensor([src_ids], dtype=torch.long).to(device)  # (1, src_len)
 
         if method == "beam":
@@ -252,9 +245,9 @@ def translate_batch(texts: list,
 
     model.eval()
     with torch.no_grad():
-        # Tokenize all sentences
+        # Tokenize all sentences (normalized)
         encoded = [
-            torch.tensor([BOS_IDX] + sp.encode(t, out_type=int) + [EOS_IDX],
+            torch.tensor([BOS_IDX] + sp.encode(normalize_amharic_text(t), out_type=int) + [EOS_IDX],
                          dtype=torch.long)
             for t in texts
         ]

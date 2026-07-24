@@ -6,15 +6,15 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.normalizer import normalize_amharic_text
+
 def normalize_amharic(text):
     if not isinstance(text, str):
         return ""
     # Convert '::' to Ethiopic full stop '።'
     text = re.sub(r':{2,}', '።', text)
-    # Convert remaining single ':' to Ethiopic word space '፡'
-    text = text.replace(':', '፡')
-    # Remove extra spaces
-    text = re.sub(r'\s+', ' ', text).strip()
+    # Apply homophone and punctuation normalization
+    text = normalize_amharic_text(text)
     return text
 
 def normalize_english(text):

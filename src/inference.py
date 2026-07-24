@@ -32,7 +32,12 @@ CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 def load_model(checkpoint_path: str, device: torch.device) -> Seq2SeqTransformer:
     """
     Instantiates the Transformer and loads weights from a checkpoint file.
+    Prefers best_model_averaged.pt if available.
     """
+    avg_ckpt = os.path.join(CHECKPOINT_DIR, "best_model_averaged.pt")
+    if checkpoint_path == os.path.join(CHECKPOINT_DIR, "best_model.pt") and os.path.exists(avg_ckpt):
+        checkpoint_path = avg_ckpt
+
     model = Seq2SeqTransformer(
         num_encoder_layers=NUM_ENCODER_LAYERS,
         num_decoder_layers=NUM_DECODER_LAYERS,

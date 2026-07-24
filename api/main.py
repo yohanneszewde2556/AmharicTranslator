@@ -35,8 +35,8 @@ from api.models import (
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PROC_DIR      = os.path.join(BASE_DIR, "data", "processed", DATA_VERSION) \
                  if DATA_VERSION else os.path.join(BASE_DIR, "data", "processed")
-SPM_MODEL      = os.path.join(_PROC_DIR, "am_en_bpe.model")
-CHECKPOINT     = os.path.join(BASE_DIR, "checkpoints", "best_model.pt")
+_AVG_CKPT      = os.path.join(BASE_DIR, "checkpoints", "best_model_averaged.pt")
+CHECKPOINT     = _AVG_CKPT if os.path.exists(_AVG_CKPT) else os.path.join(BASE_DIR, "checkpoints", "best_model.pt")
 
 # ── Global app state ──────────────────────────────────────────────────────────
 # Model and tokenizer are loaded once at startup and reused for every request.

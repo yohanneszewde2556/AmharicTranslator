@@ -74,6 +74,12 @@ def normalize_amharic_text(text: str) -> str:
     # 2. Greeting Clause Boundary Normalization
     # If text starts with 'ሰላም' followed by a space (e.g. ሰላም እንዴት ነህ), add '!' boundary so it translates to "hello!" instead of "peace"
     text = re.sub(r'^(ሰላም)\s+', r'\1! ', text)
+    text = re.sub(r'^(ጤና ይስጥልኝ)\s*', r'\1! ', text)
+
+    # Conversational greeting boundary normalization
+    text = re.sub(r'^(ደህና አደራችሁ|ደህና አደርክ|ደህና አደርሽ|ደህና አደሩ)\s*', r'ደህና አደሩ! ', text)
+    text = re.sub(r'^(ደህና ዋላችሁ|ደህና ዋልክ|ደህና ዋልሽ|ደህና ዋሉ)\s*', r'ደህና ዋሉ! ', text)
+    text = re.sub(r'^(ደህና አመሻችሁ|ደህና አመሸህ|ደህና አመሸሽ|ደህና አመሹ)\s*', r'ደህና አመሹ! ', text)
 
     # Collapse multiple whitespaces
     text = re.sub(r'\s+', ' ', text).strip()
